@@ -497,11 +497,14 @@
                           <Font name="Poppins" size="12" style="0"/>
                         </Property>
                         <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-                          <StringArray count="4">
-                            <StringItem index="0" value="Pending"/>
-                            <StringItem index="1" value="Preparing"/>
-                            <StringItem index="2" value="Served"/>
-                            <StringItem index="3" value="Cancelled"/>
+                          <StringArray count="7">
+                            <StringItem index="0" value="All"/>
+                            <StringItem index="1" value="Pending"/>
+                            <StringItem index="2" value="Preparing"/>
+                            <StringItem index="3" value="Served"/>
+                            <StringItem index="4" value="Refunded"/>
+                            <StringItem index="5" value="Completed"/>
+                            <StringItem index="6" value="Cancelled"/>
                           </StringArray>
                         </Property>
                       </Properties>
@@ -1058,7 +1061,7 @@
                       </Properties>
                       <Constraints>
                         <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignAbsoluteLayout" value="org.netbeans.modules.form.compat2.layouts.DesignAbsoluteLayout$AbsoluteConstraintsDescription">
-                          <AbsoluteConstraints x="0" y="529" width="979" height="691"/>
+                          <AbsoluteConstraints x="0" y="529" width="979" height="760"/>
                         </Constraint>
                       </Constraints>
 
@@ -1457,7 +1460,7 @@
                           </Properties>
                           <Constraints>
                             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignAbsoluteLayout" value="org.netbeans.modules.form.compat2.layouts.DesignAbsoluteLayout$AbsoluteConstraintsDescription">
-                              <AbsoluteConstraints x="38" y="375" width="-1" height="-1"/>
+                              <AbsoluteConstraints x="38" y="375" width="-1" height="360"/>
                             </Constraint>
                           </Constraints>
 
@@ -1469,7 +1472,7 @@
                             </DimensionLayout>
                             <DimensionLayout dim="1">
                               <Group type="103" groupAlignment="0" attributes="0">
-                                  <EmptySpace min="0" pref="290" max="32767" attributes="0"/>
+                                  <EmptySpace min="0" pref="360" max="32767" attributes="0"/>
                               </Group>
                             </DimensionLayout>
                           </Layout>
@@ -1882,10 +1885,8 @@
                                           <Component id="btnEditTable" min="-2" max="-2" attributes="0"/>
                                           <EmptySpace max="-2" attributes="0"/>
                                           <Component id="btnDeleteTable" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace min="-2" pref="48" max="-2" attributes="0"/>
-                                          <Component id="txtSearchRes" max="32767" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="lblSearchRes" min="-2" pref="36" max="-2" attributes="0"/>
+                                          <EmptySpace max="32767" attributes="0"/>
+                                          <Component id="btnCompleted" min="-2" max="-2" attributes="0"/>
                                           <EmptySpace max="-2" attributes="0"/>
                                           <Component id="btnConfirmed" min="-2" max="-2" attributes="0"/>
                                           <EmptySpace max="-2" attributes="0"/>
@@ -1900,6 +1901,10 @@
                                               <Group type="102" attributes="0">
                                                   <Component id="jLabel34" min="-2" max="-2" attributes="0"/>
                                                   <EmptySpace max="32767" attributes="0"/>
+                                                  <Component id="txtSearchRes" min="-2" pref="248" max="-2" attributes="0"/>
+                                                  <EmptySpace max="-2" attributes="0"/>
+                                                  <Component id="lblSearchRes" min="-2" pref="36" max="-2" attributes="0"/>
+                                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
                                                   <Component id="cbResStatus" min="-2" max="-2" attributes="0"/>
                                               </Group>
                                               <Component id="jScrollPane2" min="-2" pref="600" max="-2" attributes="0"/>
@@ -1914,36 +1919,40 @@
                         <DimensionLayout dim="1">
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace min="-2" pref="19" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Group type="103" groupAlignment="0" attributes="0">
                                       <Group type="102" alignment="0" attributes="0">
-                                          <Group type="103" groupAlignment="3" attributes="0">
-                                              <Component id="jLabel34" alignment="3" min="-2" max="-2" attributes="0"/>
-                                              <Component id="cbResStatus" alignment="3" min="-2" pref="28" max="-2" attributes="0"/>
-                                          </Group>
-                                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                          <Component id="jScrollPane2" pref="0" max="32767" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" alignment="0" attributes="0">
+                                          <EmptySpace min="-2" pref="19" max="-2" attributes="0"/>
                                           <Component id="jLabel33" min="-2" max="-2" attributes="0"/>
                                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                                           <Component id="jScrollPane1" min="-2" pref="400" max="-2" attributes="0"/>
                                       </Group>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <EmptySpace min="-2" pref="16" max="-2" attributes="0"/>
+                                          <Group type="103" groupAlignment="3" attributes="0">
+                                              <Component id="jLabel34" alignment="3" min="-2" max="-2" attributes="0"/>
+                                              <Component id="cbResStatus" alignment="3" min="-2" pref="28" max="-2" attributes="0"/>
+                                              <Group type="103" alignment="1" groupAlignment="0" max="-2" attributes="0">
+                                                  <Component id="txtSearchRes" alignment="0" min="-2" pref="35" max="-2" attributes="0"/>
+                                                  <Component id="lblSearchRes" max="32767" attributes="0"/>
+                                              </Group>
+                                          </Group>
+                                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                          <Component id="jScrollPane2" pref="0" max="32767" attributes="0"/>
+                                      </Group>
                                   </Group>
                                   <EmptySpace max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Group type="103" groupAlignment="0" attributes="0">
                                       <Group type="103" groupAlignment="3" attributes="0">
                                           <Component id="btnEditTable" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                           <Component id="btnDeleteTable" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                           <Component id="btnAddTable" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
-                                          <Component id="txtSearchRes" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
+                                          <Component id="btnCompleted" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                       </Group>
                                       <Group type="103" alignment="0" groupAlignment="3" attributes="0">
                                           <Component id="btnConfirmed" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                           <Component id="btnDelRes" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                           <Component id="btnCancelled" alignment="3" min="-2" pref="35" max="-2" attributes="0"/>
                                       </Group>
-                                      <Component id="lblSearchRes" max="32767" attributes="0"/>
                                   </Group>
                                   <EmptySpace pref="24" max="32767" attributes="0"/>
                               </Group>
@@ -2246,6 +2255,26 @@
                           <AuxValues>
                             <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
                           </AuxValues>
+                        </Component>
+                        <Component class="javax.swing.JButton" name="btnCompleted">
+                          <Properties>
+                            <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+                              <Color blue="ff" green="99" red="99" type="rgb"/>
+                            </Property>
+                            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                              <Font name="Poppins" size="12" style="0"/>
+                            </Property>
+                            <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
+                              <Image iconType="3" name="/assets/edit-alt-regular-24.png"/>
+                            </Property>
+                            <Property name="text" type="java.lang.String" value="Completed"/>
+                            <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
+                              <Color id="Hand Cursor"/>
+                            </Property>
+                          </Properties>
+                          <Events>
+                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCompletedActionPerformed"/>
+                          </Events>
                         </Component>
                       </SubComponents>
                     </Container>

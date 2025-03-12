@@ -23,6 +23,8 @@ import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Image;
 import java.text.SimpleDateFormat;
 import javax.swing.ImageIcon;
@@ -36,6 +38,10 @@ import javax.swing.JTable;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.swing.JLabel;
 
 /**
  *
@@ -43,7 +49,8 @@ import javax.swing.table.DefaultTableModel;
  */
 public class Main extends javax.swing.JFrame {
 
-    private DefaultTableModel cartModel = new DefaultTableModel(new Object[]{"Item", "Quantity", "Price"}, 0);
+    private DefaultTableModel cartModel = new DefaultTableModel(new Object[]{"Menu ID", "Item", "Quantity", "Price"}, 0);
+    private ScheduledExecutorService scheduler;
     
     /**
      * Creates new form Main
@@ -63,13 +70,14 @@ public class Main extends javax.swing.JFrame {
         restrictDateChooser();
         createRevenueChart("This year");
         createCategoryChart("This year");
+
+        startScheduledTask();
     }
     
     private void restrictDateChooser() {
         dcDate.setMinSelectableDate(new java.util.Date());
         dcDate.getDateEditor().setEnabled(false);
     }
-
     
     private void showErrorMessage(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
@@ -91,14 +99,16 @@ public class Main extends javax.swing.JFrame {
             sql = "CALL GetNewSales()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblTotalSalesW.setText("+" + String.format("%.2f", rs.getDouble("sales_this_week")));
+                    double salesThisWeek = rs.getDouble("sales_this_week");
+                    lblTotalSalesW.setText((salesThisWeek > 0 ? "+" : "") + formatNumber(salesThisWeek) + " this week");
                 }
             }
 
             sql = "CALL GetSalesGrowth()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblTotalSalesP.setText("+" + String.format("%.2f", rs.getDouble("sales_growth_percentage")) + "%");
+                    double salesGrowth = rs.getDouble("sales_growth_percentage");
+                    lblTotalSalesP.setText((salesGrowth > 0 ? "+" : "") + String.format("%.2f", salesGrowth) + "%");
                 }
             }
 
@@ -112,14 +122,16 @@ public class Main extends javax.swing.JFrame {
             sql = "CALL GetNewCustomers()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblCustomersW.setText("+" + rs.getInt("customers_this_week") + " this week");
+                    int customersThisWeek = rs.getInt("customers_this_week");
+                    lblCustomersW.setText((customersThisWeek > 0 ? "+" : "") + customersThisWeek + " this week");
                 }
             }
 
             sql = "CALL GetCustomerGrowth()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblCustomersP.setText("+" + String.format("%.2f", rs.getDouble("customer_growth_percentage")) + "%");
+                    double customerGrowth = rs.getDouble("customer_growth_percentage");
+                    lblCustomersP.setText((customerGrowth > 0 ? "+" : "") + String.format("%.2f", customerGrowth) + "%");
                 }
             }
 
@@ -133,14 +145,16 @@ public class Main extends javax.swing.JFrame {
             sql = "CALL GetNewOrders()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblTotalOrdersW.setText("+" + (rs.getInt("orders_this_week")) + " this week");
+                    int ordersThisWeek = rs.getInt("orders_this_week");
+                    lblTotalOrdersW.setText((ordersThisWeek > 0 ? "+" : "") + ordersThisWeek + " this week");
                 }
             }
 
             sql = "CALL GetOrderGrowth()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblTotalOrdersP.setText("+" + String.format("%.2f", rs.getDouble("order_growth_percentage")) + "%");
+                    double orderGrowth = rs.getDouble("order_growth_percentage");
+                    lblTotalOrdersP.setText((orderGrowth > 0 ? "+" : "") + String.format("%.2f", orderGrowth) + "%");
                 }
             }
 
@@ -155,15 +169,16 @@ public class Main extends javax.swing.JFrame {
             sql = "CALL GetNewRefundedOrders()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    double refundedWeek = (rs.getDouble("refunded_this_week"));
-                    lblRefundedW.setText("+" + formatNumber(refundedWeek));
+                    double refundedWeek = rs.getDouble("refunded_this_week");
+                    lblRefundedW.setText((refundedWeek > 0 ? "+" : "") + formatNumber(refundedWeek));
                 }
             }
 
             sql = "CALL GetRefundedOrderGrowth()";
             try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    lblRefundedP.setText("+" + String.format("%.2f", rs.getDouble("refund_growth_percentage")) + "%");
+                    double refundGrowth = rs.getDouble("refund_growth_percentage");
+                    lblRefundedP.setText((refundGrowth > 0 ? "+" : "") + String.format("%.2f", refundGrowth) + "%");
                 }
             }
 
@@ -225,7 +240,7 @@ public class Main extends javax.swing.JFrame {
                 + "AND (c.first_name LIKE ? OR c.last_name LIKE ?) "
                 + "ORDER BY r.reservation_time ASC";
         
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMMM dd, yyyy");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy - hh:mm a");
 
         try (Connection conn = DBConnection.Connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -282,11 +297,13 @@ public class Main extends javax.swing.JFrame {
         String sql = "SELECT o.order_id, CONCAT(c.first_name, ' ', c.last_name) AS customer_name, o.table_id, o.status "
                 + "FROM orders o "
                 + "INNER JOIN customers c ON o.customer_id = c.customer_id "
-                + "WHERE status = ?";
+                + "WHERE status LIKE ?";
 
         try (Connection conn = DBConnection.Connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, status);
+            if ("All".equals(status)) {
+                status = "%%";
+            }
+            ps.setString(1, "%" + status + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     model.addRow(new Object[]{
@@ -329,20 +346,20 @@ public class Main extends javax.swing.JFrame {
     
     private void createRevenueChart(String period) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        double totalSales = 0; // Variable to hold total sales for the selected period
 
         try (Connection conn = DBConnection.Connect()) {
-            String sql = "CALL GetRevenueStats(?)";
+            String sql = "CALL GetRevenueStats(?)"; // Assuming this stored procedure returns revenue stats
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, period);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        double totalSales = rs.getDouble("total_sales");
+                        double revenue = rs.getDouble("total_sales");
                         String dateLabel = rs.getString("date_label");
 
-                        // Debugging: Print to console to check data
-                        System.out.println("Date: " + dateLabel + ", Sales: " + totalSales);
-
-                        dataset.addValue(totalSales, "Revenue", dateLabel);
+                        // Add revenue data to the dataset
+                        dataset.addValue(revenue, "Revenue", dateLabel);
+                        totalSales += revenue; // Accumulate total sales
                     }
                 }
             }
@@ -350,12 +367,13 @@ public class Main extends javax.swing.JFrame {
             showErrorMessage("Database Error: " + e.getMessage());
         }
 
+        // Create the chart
         JFreeChart lineChart = ChartFactory.createLineChart(
                 "Revenue", "Period", "Sales (PHP)",
                 dataset, PlotOrientation.VERTICAL, true, true, false
         );
-        
-        lineChart.setBackgroundPaint(new Color(240,240,240));
+
+        lineChart.setBackgroundPaint(new Color(240, 240, 240));
         lineChart.getPlot().setBackgroundPaint(Color.WHITE);
 
         // Force the Y-axis to start at 0 for better visibility
@@ -368,12 +386,23 @@ public class Main extends javax.swing.JFrame {
         renderer.setSeriesLinesVisible(0, true);  // Ensure line is drawn
         plot.setRenderer(renderer);
 
+        // Create a chart panel
         ChartPanel chartPanel = new ChartPanel(lineChart);
         chartPanel.setPreferredSize(RevenuePanel.getSize());
 
+        // Clear the previous chart and add the new one
         RevenuePanel.removeAll();
         RevenuePanel.setLayout(new BorderLayout());
         RevenuePanel.add(chartPanel, BorderLayout.CENTER);
+
+        // Create a panel to center the total sales label
+        JPanel totalSalesPanel = new JPanel();
+        totalSalesPanel.setLayout(new FlowLayout(FlowLayout.CENTER)); // Center the label
+        JLabel totalSalesLabel = new JLabel("Total Sales for " + period + ": PHP " + formatNumber(totalSales));
+        totalSalesLabel.setFont(new Font("Poppins", Font.BOLD, 14));
+        totalSalesPanel.add(totalSalesLabel); // Add the label to the panel
+
+        RevenuePanel.add(totalSalesPanel, BorderLayout.SOUTH); // Add the panel below the chart
         RevenuePanel.validate();
     }
 
@@ -600,7 +629,7 @@ public class Main extends javax.swing.JFrame {
             // Insert the order with the reservation_id
             int orderId;
             try (PreparedStatement insertOrder = conn.prepareStatement(
-                    "INSERT INTO orders (customer_id, table_id, total_price, payment, change_due, status, reservation_id) VALUES (?, ?, ?, ?, ?, 'Pending', ?)",
+                    "INSERT INTO orders (customer_id, menu_id, table_id, total_price, payment, change_due, status, reservation_id) VALUES (?, ?, ?, ?, ?, 'Pending', ?)",
                     PreparedStatement.RETURN_GENERATED_KEYS)) {
 
                 // Assuming you have the tableId from the selected table
@@ -1071,6 +1100,52 @@ public class Main extends javax.swing.JFrame {
         }
     }
     
+    private void startScheduledTask() {
+        scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(() -> {
+            updateExpiredReservationsAndOrders();
+            loadReservations("All", ""); // Refresh the reservations table
+            loadOrders(); // Refresh the orders table
+        }, 0, 1, TimeUnit.DAYS); // Run once a day
+    }
+    
+    private void updateExpiredReservationsAndOrders() {
+        try (Connection conn = DBConnection.Connect()) {
+            // Update reservations
+            String updateReservationsSql = "UPDATE reservations SET status = 'Cancelled' WHERE status = 'Pending' AND reservation_time < NOW()";
+            try (PreparedStatement ps = conn.prepareStatement(updateReservationsSql)) {
+                ps.executeUpdate();
+            }
+
+            String completeReservationsSql = "UPDATE reservations SET status = 'Completed' WHERE status = 'Confirmed' AND reservation_time < NOW()";
+            try (PreparedStatement ps = conn.prepareStatement(completeReservationsSql)) {
+                ps.executeUpdate();
+            }
+
+            // Update orders
+            String updateOrdersSql = "UPDATE orders SET status = 'Cancelled' WHERE status = 'Pending' AND order_date < NOW()"; // Assuming you have an order_time column
+            try (PreparedStatement ps = conn.prepareStatement(updateOrdersSql)) {
+                ps.executeUpdate();
+            }
+
+            String completeOrdersSql = "UPDATE orders SET status = 'Completed' WHERE status = 'Confirmed' AND order_date < NOW()"; // Assuming you have an order_time column
+            try (PreparedStatement ps = conn.prepareStatement(completeOrdersSql)) {
+                ps.executeUpdate();
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public void dispose() {
+        if (scheduler != null) {
+            scheduler.shutdown();
+        }
+        super.dispose();
+    }
+    
     // Orders
     
     private void updateOrderStatus(String newStatus) {
@@ -1122,7 +1197,8 @@ public class Main extends javax.swing.JFrame {
                 int row = menu.tbMenu.getSelectedRow();
                 if (row != -1) {
                     String itemName = menu.tbMenu.getValueAt(row, 0).toString();
-                    double price = Double.parseDouble(menu.tbMenu.getValueAt(row, 1).toString().replace("PHP ", ""));
+                    double price = Double.parseDouble(menu.tbMenu.getValueAt(row, 2).toString().replace("PHP ", ""));
+                    int menuId = (int) menu.tbMenu.getValueAt(row, 0); // Assuming menu_id is in the 4th column
 
                     JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 100, 1));
                     int option = JOptionPane.showConfirmDialog(null, quantitySpinner,
@@ -1130,13 +1206,41 @@ public class Main extends javax.swing.JFrame {
 
                     if (option == JOptionPane.OK_OPTION) {
                         int quantity = (int) quantitySpinner.getValue();
-                        cartModel.addRow(new Object[]{itemName, quantity, price * quantity});
+                        addToCart(menuId, itemName, quantity, price);
                     }
                 }
             }
         });
     }
-    
+
+    private void addToCart(int menuId, String itemName, int quantity, double price) {
+        boolean itemExists = false;
+
+        // Iterate through the cartModel to check if the item already exists
+        for (int i = 0; i < cartModel.getRowCount(); i++) {
+            String existingItemName = cartModel.getValueAt(i, 1).toString(); // Item name is now in column 1
+            if (existingItemName.equals(itemName)) {
+                // Item exists, update the quantity and total price
+                int existingQuantity = (int) cartModel.getValueAt(i, 2);
+                double existingTotalPrice = (double) cartModel.getValueAt(i, 3);
+
+                // Update the quantity and total price
+                int newQuantity = existingQuantity + quantity;
+                double newTotalPrice = price * newQuantity;
+
+                cartModel.setValueAt(newQuantity, i, 2);
+                cartModel.setValueAt(newTotalPrice, i, 3);
+                itemExists = true;
+                break;
+            }
+        }
+
+        // If the item does not exist, add it as a new row
+        if (!itemExists) {
+            cartModel.addRow(new Object[]{menuId, itemName, quantity, price * quantity});
+        }
+    }
+
     private void selectBundles(Bundles bundles) {
         bundles.tbBundles.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -1151,11 +1255,39 @@ public class Main extends javax.swing.JFrame {
 
                     if (option == JOptionPane.OK_OPTION) {
                         int quantity = (int) quantitySpinner.getValue();
-                        cartModel.addRow(new Object[]{bundleName, quantity, price * quantity});
+                        addToCart(bundleName, quantity, price);
                     }
                 }
             }
         });
+    }
+
+    private void addToCart(String itemName, int quantity, double price) {
+        boolean itemExists = false;
+
+        // Iterate through the cartModel to check if the item already exists
+        for (int i = 0; i < cartModel.getRowCount(); i++) {
+            String existingItemName = cartModel.getValueAt(i, 0).toString();
+            if (existingItemName.equals(itemName)) {
+                // Item exists, update the quantity and total price
+                int existingQuantity = (int) cartModel.getValueAt(i, 1);
+                double existingTotalPrice = (double) cartModel.getValueAt(i, 2);
+
+                // Update the quantity and total price
+                int newQuantity = existingQuantity + quantity;
+                double newTotalPrice = price * newQuantity;
+
+                cartModel.setValueAt(newQuantity, i, 1);
+                cartModel.setValueAt(newTotalPrice, i, 2);
+                itemExists = true;
+                break;
+            }
+        }
+
+        // If the item does not exist, add it as a new row
+        if (!itemExists) {
+            cartModel.addRow(new Object[]{itemName, quantity, price * quantity});
+        }
     }
     
     private void showMenu(boolean reopenCart) {
@@ -1249,7 +1381,7 @@ public class Main extends javax.swing.JFrame {
         // Calculate total price
         double totalPrice = 0;
         for (int i = 0; i < cartModel.getRowCount(); i++) {
-            totalPrice += Double.parseDouble(cartModel.getValueAt(i, 2).toString());
+            totalPrice += Double.parseDouble(cartModel.getValueAt(i, 3).toString()); // Price is now in column 3
         }
 
         // Ask for customer details
@@ -1317,13 +1449,15 @@ public class Main extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(this, "Order cancelled. No table selected.");
                 return;
             }
-            
+
+            // Check table status
             try (PreparedStatement checkTable = conn.prepareStatement("SELECT status FROM tables WHERE table_id = ?")) {
                 checkTable.setInt(1, tableId);
                 ResultSet rs = checkTable.executeQuery();
                 if (rs.next()) {
                     if (rs.getString("status").equals("Occupied")) {
-                        JOptionPane.showMessageDialog(this, "This table is currently occuppied.");
+                        JOptionPane.showMessageDialog(this, "This table is currently occupied.");
+                        return;
                     } else {
                         try (PreparedStatement updateTable = conn.prepareStatement(
                                 "UPDATE tables SET status = 'Occupied' WHERE table_id = ?")) {
@@ -1334,7 +1468,6 @@ public class Main extends javax.swing.JFrame {
                 }
             }
 
-            // ✅ Ask for payment amount
             double paymentAmount = 0;
             while (true) {
                 String paymentStr = JOptionPane.showInputDialog(this,
@@ -1386,13 +1519,13 @@ public class Main extends javax.swing.JFrame {
 
             // Insert order items
             try (PreparedStatement insertItem = conn.prepareStatement(
-                    "INSERT INTO order_items (order_id, menu_id, quantity, price) VALUES (?, (SELECT menu_id FROM menu WHERE item_name = ?), ?, ?)")) {
+                    "INSERT INTO order_items (order_id, menu_id, quantity, price) VALUES (?, ?, ?, ?)")) {
 
                 for (int i = 0; i < cartModel.getRowCount(); i++) {
                     insertItem.setInt(1, orderId);
-                    insertItem.setString(2, cartModel.getValueAt(i, 0).toString());
-                    insertItem.setInt(3, Integer.parseInt(cartModel.getValueAt(i, 1).toString()));
-                    insertItem.setDouble(4, Double.parseDouble(cartModel.getValueAt(i, 2).toString()));
+                    insertItem.setInt(2, (int) cartModel.getValueAt(i, 0)); // Menu ID is now in column 0
+                    insertItem.setInt(3, Integer.parseInt(cartModel.getValueAt(i, 2).toString())); // Quantity is in column 2
+                    insertItem.setDouble(4, Double.parseDouble(cartModel.getValueAt(i, 3).toString())); // Price is in column 3
                     insertItem.executeUpdate();
                 }
             }
@@ -1614,6 +1747,7 @@ public class Main extends javax.swing.JFrame {
         lblSearchRes = new javax.swing.JLabel();
         btnCancelled = new javax.swing.JButton();
         cbResStatus = new javax.swing.JComboBox<>();
+        btnCompleted = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -1775,7 +1909,7 @@ public class Main extends javax.swing.JFrame {
         });
 
         cbOrderSort.setFont(new java.awt.Font("Poppins", 0, 12)); // NOI18N
-        cbOrderSort.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Pending", "Preparing", "Served", "Cancelled" }));
+        cbOrderSort.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "All", "Pending", "Preparing", "Served", "Refunded", "Completed", "Cancelled" }));
         cbOrderSort.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cbOrderSortActionPerformed(evt);
@@ -2329,10 +2463,10 @@ public class Main extends javax.swing.JFrame {
         );
         RevenuePanelLayout.setVerticalGroup(
             RevenuePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 290, Short.MAX_VALUE)
+            .addGap(0, 360, Short.MAX_VALUE)
         );
 
-        DashPanel.add(RevenuePanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(38, 375, -1, -1));
+        DashPanel.add(RevenuePanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(38, 375, -1, 360));
 
         cbSortRev.setFont(new java.awt.Font("Poppins", 0, 12)); // NOI18N
         cbSortRev.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "This year", "This month", "This week" }));
@@ -2371,7 +2505,7 @@ public class Main extends javax.swing.JFrame {
         });
         DashPanel.add(cbSalesCat, new org.netbeans.lib.awtextra.AbsoluteConstraints(835, 322, -1, 35));
 
-        Home.add(DashPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 529, 979, 691));
+        Home.add(DashPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 529, 979, 760));
 
         HomePage.setViewportView(Home);
 
@@ -2638,6 +2772,17 @@ public class Main extends javax.swing.JFrame {
             }
         });
 
+        btnCompleted.setBackground(new java.awt.Color(153, 153, 255));
+        btnCompleted.setFont(new java.awt.Font("Poppins", 0, 12)); // NOI18N
+        btnCompleted.setIcon(new javax.swing.ImageIcon(getClass().getResource("/assets/edit-alt-regular-24.png"))); // NOI18N
+        btnCompleted.setText("Completed");
+        btnCompleted.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCompleted.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCompletedActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel10Layout = new javax.swing.GroupLayout(jPanel10);
         jPanel10.setLayout(jPanel10Layout);
         jPanel10Layout.setHorizontalGroup(
@@ -2651,10 +2796,8 @@ public class Main extends javax.swing.JFrame {
                         .addComponent(btnEditTable)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnDeleteTable)
-                        .addGap(48, 48, 48)
-                        .addComponent(txtSearchRes)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(lblSearchRes, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnCompleted)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnConfirmed)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -2668,6 +2811,10 @@ public class Main extends javax.swing.JFrame {
                             .addGroup(jPanel10Layout.createSequentialGroup()
                                 .addComponent(jLabel34)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(txtSearchRes, javax.swing.GroupLayout.PREFERRED_SIZE, 248, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(lblSearchRes, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(cbResStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 600, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -2676,30 +2823,33 @@ public class Main extends javax.swing.JFrame {
         jPanel10Layout.setVerticalGroup(
             jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel10Layout.createSequentialGroup()
-                .addGap(19, 19, 19)
-                .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel10Layout.createSequentialGroup()
-                        .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel34)
-                            .addComponent(cbResStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
-                    .addGroup(jPanel10Layout.createSequentialGroup()
+                        .addGap(19, 19, 19)
                         .addComponent(jLabel33)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel10Layout.createSequentialGroup()
+                        .addGap(16, 16, 16)
+                        .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel34)
+                            .addComponent(cbResStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(txtSearchRes, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(lblSearchRes, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(btnEditTable, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(btnDeleteTable, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(btnAddTable, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(txtSearchRes, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(btnCompleted, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel10Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(btnConfirmed, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(btnDelRes, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btnCancelled, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(lblSearchRes, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(btnCancelled, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(24, Short.MAX_VALUE))
         );
 
@@ -2952,6 +3102,7 @@ public class Main extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(this, "Only Cancelled orders can be refunded.");
             } else {
                 updateOrderStatus("Refunded");
+                loadDashboard();
             }
         }
     }//GEN-LAST:event_btnRefundActionPerformed
@@ -2969,6 +3120,28 @@ public class Main extends javax.swing.JFrame {
             showItemImage();
         }
     }//GEN-LAST:event_tbItemsMouseClicked
+
+    private void btnCompletedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompletedActionPerformed
+        int row = tbReservations.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Select a reservation first.");
+            return;
+        }
+
+        int resId = (int) tbReservations.getValueAt(row, 0); // Get the reservation ID from the selected row
+
+        try (Connection conn = DBConnection.Connect(); PreparedStatement ps = conn.prepareStatement("UPDATE reservations SET status = 'Completed' WHERE reservation_id = ?")) {
+
+            ps.setInt(1, resId);
+            ps.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Reservation marked as Completed.");
+            loadReservations("All", ""); // Refresh the reservations table
+            loadDashboard(); // Optionally refresh the dashboard if needed
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + e.getMessage());
+        }
+    }//GEN-LAST:event_btnCompletedActionPerformed
 
     /**
      * @param args the command line arguments
@@ -3022,6 +3195,7 @@ public class Main extends javax.swing.JFrame {
     private javax.swing.JButton btnBook;
     private javax.swing.JButton btnCancelOrder;
     private javax.swing.JButton btnCancelled;
+    private javax.swing.JButton btnCompleted;
     private javax.swing.JButton btnConfirmed;
     private javax.swing.JButton btnDelRes;
     private javax.swing.JButton btnDeleteTable;
